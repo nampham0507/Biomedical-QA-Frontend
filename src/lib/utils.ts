@@ -26,3 +26,13 @@ export function formatBytes(bytes: number): string {
 export function truncate(str: string, length = 100): string {
   return str.length > length ? str.slice(0, length) + "..." : str;
 }
+
+export function getInitials(name: string): string {
+  return name
+    .trim()
+    .split(/\s+/)
+    .map((part) => part[0])
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
+}

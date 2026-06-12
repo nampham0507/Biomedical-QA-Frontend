@@ -52,6 +52,15 @@ export interface Dataset {
   createdAt: string;
 }
 
+export interface AskResult {
+  conversationId: string;
+  question: string;
+  answer: string;
+  sources: Source[];
+  processingTime?: number;
+  tokensUsed?: number;
+}
+
 export interface Pagination {
   page: number;
   limit: number;

@@ -1,101 +1,114 @@
-import { Outlet, NavLink, useNavigate } from "react-router-dom";
+import { useState } from "react";
+import { Outlet, useLocation, useNavigate } from "react-router-dom";
+import { AnimatePresence, motion } from "framer-motion";
 import {
+  LayoutDashboard,
   MessageSquare,
-  History,
+  BookOpen,
+  Database,
+  MessagesSquare,
   Heart,
-  User,
+  UserRound,
+  ShieldCheck,
   LogOut,
-  Shield,
+  FlaskConical,
 } from "lucide-react";
-import { useAuthStore } from "../../stores/auth.store";
-import { useI18n } from "../../i18n";
-import LanguageSwitcher from "../shared/LanguageSwitcher";
-import api from "../../services/api";
-import { cn } from "../../lib/utils";
+import { useAuthStore } from "@/stores/auth.store";
+import { useI18n } from "@/i18n";
+import api from "@/services/api";
+import Sidebar, { type SidebarNavItem } from "./Sidebar";
+import Topbar from "./Topbar";
 
 export default function AppLayout() {
   const { t } = useI18n();
   const { user, logout } = useAuthStore();
   const navigate = useNavigate();
+  const location = useLocation();
+  const [collapsed, setCollapsed] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   async function handleLogout() {
     try {
       await api.post("/auth/logout");
-    } catch {}
+    } catch {
+      /* ignore */
+    }
     logout();
-    navigate("/login");
+    navigate("/auth/login");
   }
 
-  const navItems = [
+  const navItems: SidebarNavItem[] = [
+    { to: "/app/dashboard", icon: LayoutDashboard, label: t.nav.dashboard },
     { to: "/app/ask", icon: MessageSquare, label: t.nav.ask },
-    { to: "/app/history", icon: History, label: t.nav.history },
+    { to: "/app/knowledge-base", icon: BookOpen, label: t.nav.knowledgeBase },
+    { to: "/app/datasets", icon: Database, label: t.nav.datasets },
+    { to: "/app/conversations", icon: MessagesSquare, label: t.nav.conversations },
     { to: "/app/favorites", icon: Heart, label: t.nav.favorites },
-    { to: "/app/profile", icon: User, label: t.nav.profile },
-    ...(user?.role === "admin"
-      ? [{ to: "/admin", icon: Shield, label: t.nav.admin }]
-      : []),
+    { to: "/app/profile", icon: UserRound, label: t.nav.profile },
+    ...(user?.role === "admin" ? [{ to: "/admin", icon: ShieldCheck, label: t.nav.admin }] : []),
   ];
 
-  return (
-    <div className="flex h-screen bg-gray-50">
-      {/* Sidebar */}
-      <aside className="flex w-56 flex-col border-r border-gray-200 bg-white">
-        <div className="flex items-center gap-2 border-b border-gray-200 px-4 py-4">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary-600 text-white font-bold text-sm">
-            BQ
-          </div>
-          <span className="font-semibold text-gray-900">
-            {t.common.appName}
-          </span>
-        </div>
+  const header = (
+    <>
+      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary-600 text-white">
+        <FlaskConical className="h-5 w-5" />
+      </div>
+      <span className="truncate font-semibold text-gray-900">{t.common.appName}</span>
+    </>
+  );
 
-        <nav className="flex-1 space-y-1 p-3">
-          {navItems.map(({ to, icon: Icon, label }) => (
-            <NavLink
-              key={to}
-              to={to}
-              className={({ isActive }) =>
-                cn(
-                  "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
-                  isActive
-                    ? "bg-primary-50 text-primary-700"
-                    : "text-gray-600 hover:bg-gray-100 hover:text-gray-900",
-                )
-              }
-            >
-              <Icon size={16} />
-              {label}
-            </NavLink>
-          ))}
-        </nav>
-
-        <div className="border-t border-gray-200 p-3 space-y-2">
-          <LanguageSwitcher />
-          <div className="flex items-center gap-2 rounded-lg px-3 py-2">
-            <div className="h-7 w-7 rounded-full bg-primary-100 flex items-center justify-center text-primary-700 font-medium text-xs">
-              {user?.fullName?.[0]?.toUpperCase()}
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-xs font-medium text-gray-900 truncate">
-                {user?.fullName}
-              </p>
-              <p className="text-xs text-gray-500 truncate">{user?.role}</p>
-            </div>
+  const footer = (
+    <div className="flex items-center gap-2">
+      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary-100 text-xs font-semibold text-primary-700">
+        {user?.fullName?.[0]?.toUpperCase() ?? "U"}
+      </div>
+      {!collapsed && (
+        <>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-xs font-medium text-gray-900">{user?.fullName}</p>
+            <p className="truncate text-xs text-gray-500">{user?.email}</p>
           </div>
           <button
             onClick={handleLogout}
-            className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
+            title={t.layout.signOut}
+            className="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-danger-50 hover:text-danger-600"
           >
-            <LogOut size={16} />
-            {t.nav.logout}
+            <LogOut className="h-4 w-4" />
           </button>
-        </div>
-      </aside>
+        </>
+      )}
+    </div>
+  );
 
-      {/* Main */}
-      <main className="flex-1 overflow-auto">
-        <Outlet />
-      </main>
+  return (
+    <div className="flex h-screen overflow-hidden bg-gray-50">
+      <Sidebar
+        navItems={navItems}
+        collapsed={collapsed}
+        onToggleCollapse={() => setCollapsed((c) => !c)}
+        mobileOpen={mobileOpen}
+        onMobileClose={() => setMobileOpen(false)}
+        header={header}
+        footer={footer}
+      />
+
+      <div className="flex min-w-0 flex-1 flex-col">
+        <Topbar onMenuClick={() => setMobileOpen(true)} profilePath="/app/profile" />
+        <main className="flex-1 overflow-y-auto">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={location.pathname}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.18, ease: "easeOut" }}
+              className="h-full"
+            >
+              <Outlet />
+            </motion.div>
+          </AnimatePresence>
+        </main>
+      </div>
     </div>
   );
 }
